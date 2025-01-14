@@ -61,6 +61,10 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#_3">Как запускать</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_4">Код</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#_5">Скриншоты</a>
+    </li>
     </ul>
                   </li>
               </ul>
@@ -133,6 +137,95 @@
    <code>http://127.0.0.1:5555</code></p>
 </li>
 </ol>
+<h2 id="_4">Код</h2>
+<p>server.py</p>
+<pre><code class="language-python">import socket
+from urllib.parse import unquote_plus
+
+grades = {}
+
+
+def generate_html():
+    html = &quot;&quot;&quot;
+    &lt;html&gt;
+        &lt;head&gt;&lt;meta charset='UTF-8'&gt;&lt;title&gt;Grades by Subject&lt;/title&gt;&lt;/head&gt;
+        &lt;body&gt;
+            &lt;h1&gt;Grades by Subject&lt;/h1&gt;
+            &lt;table border=&quot;1&quot;&gt;
+                &lt;tr&gt;
+                    &lt;th&gt;Subject&lt;/th&gt;
+                    &lt;th&gt;Grades&lt;/th&gt;
+                &lt;/tr&gt;
+    &quot;&quot;&quot;
+    for subject, grade_list in grades.items():
+        grades_str = &quot;, &quot;.join(grade_list)
+        html += f&quot;&lt;tr&gt;&lt;td&gt;{subject}&lt;/td&gt;&lt;td&gt;{grades_str}&lt;/td&gt;&lt;/tr&gt;&quot;
+
+    html += &quot;&quot;&quot;
+            &lt;/table&gt;
+        &lt;/body&gt;
+    &lt;/html&gt;
+    &quot;&quot;&quot;
+    return html
+
+
+def parse_post_data(data):
+    post_data = {}
+    params = data.split('&amp;')
+    if len(params) &gt; 1:
+        for param in params:
+            key, value = param.split('=')
+            post_data[key] = unquote_plus(value)
+    return post_data
+
+def handle_request(request):
+    headers, _, body = request.partition('\r\n\r\n')
+    lines = headers.splitlines()
+    request_line = lines[0]
+    method, path, _ = request_line.split()
+
+    if method == 'GET':
+        response_body = generate_html()
+        response = 'HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n' + response_body
+        return response
+
+    elif method == 'POST':
+        post_data = parse_post_data(body)
+        subject = post_data.get('subject', '')
+        grade = post_data.get('grade', '')
+        if subject in grades:
+            grades[subject].append(grade)
+        else:
+            grades[subject] = [grade]
+        response_body = generate_html()
+        response = 'HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n' + response_body
+        return response
+
+def run_server():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(('localhost', 8080))
+    server_socket.listen(5)
+    print(&quot;Сервер запущен на порту 8080...&quot;)
+
+    while True:
+        client_socket, addr = server_socket.accept()
+        print(f&quot;Получен запрос от {addr}&quot;)
+
+        request = client_socket.recv(1024).decode('utf-8')
+
+        print(request)
+        if request:
+            response = handle_request(request)
+            client_socket.sendall(response.encode('utf-8'))
+
+        client_socket.close()
+
+
+if __name__ == &quot;__main__&quot;:
+    run_server()
+</code></pre>
+<h2 id="_5">Скриншоты</h2>
+<p><img alt="img.png" src="../images/img4.png" /></p>
               
             </div>
           </div><footer>
